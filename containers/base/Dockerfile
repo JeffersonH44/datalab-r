@@ -293,3 +293,33 @@ COPY config/py3-kernel-startup.sh $DATALAB_CONDA_DIR/envs/$PYTHON_3_ENV/share/ju
 
 RUN chmod 755 $DATALAB_CONDA_DIR/envs/$PYTHON_3_ENV/share/jupyter/kernels/python2/kernel-startup.sh && \
     chmod 755 $DATALAB_CONDA_DIR/envs/$PYTHON_3_ENV/share/jupyter/kernels/python3/kernel-startup.sh
+
+
+RUN echo "deb-src http://ftp.us.debian.org/debian stretch main contrib non-free" >> /etc/apt/sources.list && \
+    apt-get update -y && \
+    apt -y -q install dirmngr apt-transport-https ca-certificates software-properties-common gnupg2
+
+RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E298A3A825C0D65DFD57CBB651716619E084DAB9 && \
+    add-apt-repository 'deb [arch=amd64,i386] https://cran.rstudio.com/bin/linux/ubuntu xenial/' && \
+    apt update -y
+RUN apt -y -q install r-base
+RUN apt -y -q install libcurl4-gnutls-dev libxml2-dev
+RUN wget https://www.openssl.org/source/openssl-1.1.0f.tar.gz && \
+    tar xzvf openssl-1.1.0f.tar.gz && \
+    cd openssl-1.1.0f && \
+    ./config -Wl,--enable-new-dtags,-rpath,'$(LIBRPATH)' && \
+    make && \
+    make install
+RUN R -e 'install.packages("git2r")'
+RUN R -e 'install.packages("devtools")' && \
+    source activate $PYTHON_3_ENV && \
+    R -e 'devtools::install_github("IRkernel/IRkernel")' && \
+    # or 'devtools::install_local("IRkernel-master.tar.gz")' && \
+    R -e 'IRkernel::installspec()' && \
+# to register the kernel in the current R installation 
+    R -e 'install.packages("googleAuthR"); library(googleAuthR); gar_gce_auth()' && \
+    R -e 'install.packages("bigQueryR"); install.packages("googleCloudStorageR")' && \
+    R -e 'install.packages("feather")' && \
+    R -e 'install.packages("tensorflow")' && \
+    R -e 'devtools::install_github("apache/spark@v2.2.0", subdir="R/pkg")' && \
+    source deactivate
